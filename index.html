@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluid Dynamics Simulation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; color: #ccc; font: 13px/1.5 monospace; }
+    #flWrap { width: 100vw; height: 70vh; min-height: 300px; background: #000; }
+    #flCanvas { display: block; width: 100%; height: 100%; }
+    .controls { padding: 6px 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; background: #111; border-top: 1px solid #333; }
+    .controls label, .controls span { white-space: nowrap; }
+    .controls select, .controls input[type="range"] { vertical-align: middle; }
+    .controls button { background: #222; color: #ccc; border: 1px solid #444; padding: 2px 10px; cursor: pointer; font: inherit; }
+    .controls button:hover { background: #333; }
+    .sep { width: 1px; height: 18px; background: #333; }
+    .row2 { border-top: 1px solid #222; }
+    #stats { padding: 4px 12px; font-size: 11px; color: #888; background: #0a0a0a; border-top: 1px solid #222; }
+    #stats span { margin-right: 14px; }
+    .val { color: #ddd; }
+  </style>
+</head>
+<body>
+
+<div id="flWrap"><canvas id="flCanvas"></canvas></div>
+
+<!-- Row 1: Core controls -->
+<div class="controls">
+  <button id="flPauseBtn">Pause</button>
+  <button id="fl-reset-flow">Reset</button>
+  <button id="flClearBtn">Clear</button>
+  <button id="flSaveBtn">Save PNG</button>
+
+  <div class="sep"></div>
+
+  <label>Solver:
+    <select id="sel-solver">
+      <option value="navier-stokes" selected>Navier-Stokes</option>
+      <option value="lbm">Lattice Boltzmann</option>
+    </select>
+  </label>
+
+  <label>Preset:
+    <select id="sel-preset">
+      <option value="air">Air</option>
+      <option value="default" selected>Default</option>
+      <option value="water">Water</option>
+      <option value="honey">Honey</option>
+      <option value="smoke">Smoke</option>
+      <option value="superfluid">Superfluid</option>
+    </select>
+  </label>
+
+  <label>Show:
+    <select id="sel-vis">
+      <option value="jet" selected>Speed</option>
+      <option value="pressure">Pressure</option>
+      <option value="vorticity">Vorticity</option>
+      <option value="schlieren">Schlieren</option>
+      <option value="qcriterion">Q-criterion</option>
+      <option value="mach">Mach</option>
+      <option value="density">Density</option>
+      <option value="smoke">Smoke</option>
+    </select>
+  </label>
+
+  <label>Mode:
+    <select id="sel-mode">
+      <option value="paint" selected>Paint fluid</option>
+      <option value="obstacle">Draw obstacle</option>
+      <option value="erase">Erase obstacle</option>
+      <option value="inlet">Place inlet</option>
+      <option value="eraseInlet">Erase inlet</option>
+    </select>
+  </label>
+
+  <div class="sep"></div>
+
+  <label><input type="checkbox" id="chk-wind"> Wind tunnel</label>
+  <label><input type="checkbox" id="chk-vectors"> Vectors</label>
+  <label><input type="checkbox" id="chk-stream"> Streamlines</label>
+  <label><input type="checkbox" id="chk-contour"> Contours</label>
+  <label><input type="checkbox" id="chk-particles"> Particles</label>
+  <label><input type="checkbox" id="chk-compress"> Compressible</label>
+  <label><input type="checkbox" id="chk-turb" checked> LES</label>
+  <label><input type="checkbox" id="chk-adaptdt"> Adaptive dt</label>
+</div>
+
+<!-- Row 2: Sliders -->
+<div class="controls row2">
+  <label>Viscosity: <input type="range" id="fl-visc" min="0" max="0.005" step="0.00005" value="0.00010"> <span class="val" id="fl-viscv">0.00010</span></label>
+  <label>Vorticity: <input type="range" id="fl-vort" min="0" max="40" step="0.5" value="8"> <span class="val" id="fl-vortv">8.0</span></label>
+  <label>Wind speed: <input type="range" id="fl-wind" min="10" max="300" step="5" value="120"> <span class="val" id="fl-windv">120</span></label>
+  <label>Brush: <input type="range" id="fl-rad" min="5" max="60" step="1" value="20"> <span class="val" id="fl-radv">20</span></label>
+  <label>Force: <input type="range" id="fl-force" min="10" max="600" step="10" value="200"> <span class="val" id="fl-forcev">200</span></label>
+  <label>Gravity: <input type="range" id="fl-gravity" min="-500" max="500" step="10" value="0"> <span class="val" id="fl-gravityv">0</span></label>
+</div>
+
+<!-- Row 3: Advanced sliders -->
+<div class="controls row2">
+  <label>Diffusion: <input type="range" id="fl-diff" min="0" max="0.005" step="0.00005" value="0.00005"> <span class="val" id="fl-diffv">0.00005</span></label>
+  <label>Dye fade: <input type="range" id="fl-fade" min="0.900" max="1.000" step="0.002" value="0.992"> <span class="val" id="fl-fadev">0.992</span></label>
+  <label>Timescale: <input type="range" id="fl-timescale" min="0.1" max="3.0" step="0.1" value="1.0"> <span class="val" id="fl-timescalev">1.0</span></label>
+  <label>Solver iters: <input type="range" id="fl-solver" min="4" max="60" step="2" value="14"> <span class="val" id="fl-solverv">14</span></label>
+  <label>C<sub>s</sub>: <input type="range" id="fl-smag" min="0.05" max="0.30" step="0.01" value="0.15"> <span class="val" id="fl-smagv">0.15</span></label>
+  <label>c<sub>s</sub>: <input type="range" id="fl-sos" min="1" max="30" step="0.5" value="8"> <span class="val" id="fl-sosv">8.0</span></label>
+  <label title="LBM relaxation time">&tau;: <input type="range" id="fl-lbm-tau" min="0.505" max="2.0" step="0.005" value="0.55"> <span class="val" id="fl-lbm-tauv">0.55</span></label>
+  <label title="LBM sub-steps per frame">Steps/frame: <input type="range" id="fl-lbm-steps" min="1" max="40" step="1" value="10"> <span class="val" id="fl-lbm-stepsv">10</span></label>
+</div>
+
+<!-- Row 4: Wind tunnel shape presets -->
+<div class="controls row2" id="fl-shapes-row" style="display:none">
+  <span>Shapes:</span>
+  <button data-flobst="cylinder">Cylinder</button>
+  <button data-flobst="plate">Flat plate</button>
+  <button data-flobst="wedge">Wedge</button>
+  <button data-flobst="airfoil">NACA 0012</button>
+  <button data-flobst="airfoil-cambered">NACA 2412</button>
+  <button data-flobst="square">Square</button>
+  <button data-flobst="backstep">Backstep</button>
+  <button data-flobst="tandem">Tandem</button>
+  <button data-flobst="venturi">Venturi</button>
+  <button data-flobst="diffuser">Diffuser</button>
+  <button data-flobst="nozzle">Nozzle</button>
+  <button data-flobst="jet-impinge">Jet impinge</button>
+  <button data-flobst="mixing">Mixing</button>
+  <button data-flobst="crossflow">Crossflow</button>
+  <button data-flobst="fountain">Fountain</button>
+  <button data-flobst="lid-cavity">Lid cavity</button>
+  <button data-flobst="magnus">Magnus</button>
+  <button data-flobst="staggered">Tube bank</button>
+  <button data-flobst="bifurcation">Bifurcation</button>
+  <button data-flobst="karman">Karman gallery</button>
+  <button data-flobst="clear" style="color:#c55">Clear obstacles</button>
+</div>
+
+<!-- Stats bar -->
+<div id="stats">
+  <span>fps: <span class="val" id="fl-stat-fps">60</span></span>
+  <span>|v|<sub>max</sub>: <span class="val" id="fl-stat-vel">0.00</span></span>
+  <span>CFL: <span class="val" id="fl-stat-cfl">0.00</span></span>
+  <span>KE: <span class="val" id="fl-stat-ke">0.000</span></span>
+  <span>Re: <span class="val" id="fl-stat-re">&mdash;</span></span>
+  <span>Mach: <span class="val" id="fl-stat-mach">&mdash;</span></span>
+  <span>C<sub>L</sub>: <span class="val" id="fl-stat-cl">&mdash;</span></span>
+  <span>C<sub>D</sub>: <span class="val" id="fl-stat-cd">&mdash;</span></span>
+  <span>St: <span class="val" id="fl-stat-st">&mdash;</span></span>
+  <span><span class="val" id="fl-stat-regime">Free</span></span>
+  <span>&nu;<sub>eff</sub>: <span class="val" id="fl-stat-neff">&mdash;</span></span>
+  <span>Enstrophy: <span class="val" id="fl-stat-enst">0.000</span></span>
+</div>
+
+<script src="fluid.js"></script>
+</body>
+</html>
