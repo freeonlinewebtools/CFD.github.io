@@ -1,0 +1,12 @@
+{
+  "name": "hyperfoam",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HyperFOAM — interactive 2D CFD solver — Navier-Stokes and lattice Boltzmann, WebGL2 field rendering.",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "test": "node tests/test.mjs && node tests/phaseA.mjs && node tests/phaseB.mjs && node tests/orient.mjs && node tests/porous.mjs && node tests/forces.mjs && node tests/svg.mjs && node tests/stl.mjs && node tests/mac.mjs && node tests/water.mjs && node tests/flip.mjs && node tests/rec.mjs && node tests/mp4.mjs && node tests/webm.mjs && node tests/boot2.mjs",
+    "validate": "node tests/validate.mjs"
+  }
+}

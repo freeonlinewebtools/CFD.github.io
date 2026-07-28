@@ -1,0 +1,688 @@
+/* Blender-derived chrome: a narrow grey ramp, 4px radii, monochrome line
+   icons, and blue for selection. Restrained on purpose — this is an instrument
+   panel, so contrast is spent on data and on what is currently selected, not
+   on decorating the frame. */
+
+:root {
+  --win:      #1d1d1d;   /* window / gutters            */
+  --editor:   #303030;   /* editor background           */
+  --head:     #282828;   /* headers and tab strips      */
+  --panel:    #303030;   /* property panels             */
+  --sunken:   #1d1d1d;   /* input wells                 */
+  --track:    #343434;   /* filled portion of a slider  */
+  --raised:   #545454;   /* buttons                     */
+  --raised-h: #656565;
+  --line:     #3c3c3c;
+  --line-2:   #232323;
+  --text:     #e5e5e5;
+  --dim:      #9a9a9a;
+  --dimmer:   #6f6f6f;
+  --accent:   #4772b3;   /* selection blue              */
+  --accent-h: #5b88cc;
+  --active:   #ed9e5c;   /* active object outline       */
+  --ok:       #6fae7a;
+  --warn:     #d9a441;
+  --bad:      #d2604e;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --ui: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+
+  --h-menu: 30px;
+  --h-vp: 30px;
+  --h-status: 24px;
+  --w-tools: 42px;
+  --w-right: 300px;
+  --h-outliner: 240px;
+  --r: 4px;
+}
+
+:root[data-theme="light"] {
+  --win:      #d6d6d6;
+  --editor:   #e8e8e8;
+  --head:     #dcdcdc;
+  --panel:    #e2e2e2;
+  --sunken:   #f2f2f2;
+  --track:    #e2e2e2;
+  --raised:   #cbcbcb;
+  --raised-h: #bcbcbc;
+  --line:     #b9b9b9;
+  --line-2:   #c9c9c9;
+  --text:     #1c1c1c;
+  --dim:      #4a4a4a;
+  --dimmer:   #737373;
+  --accent:   #3b6ea8;
+  --accent-h: #2f5c90;
+  --active:   #b26a20;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+
+/* The `hidden` attribute must actually hide.
+ *
+ * The UA stylesheet's [hidden] { display: none } is a low-priority rule, so ANY
+ * author `display:` on the same element beats it and the element stays visible
+ * with the attribute set. That is a silent failure: the JS is correct, the
+ * attribute is in the DOM, and nothing moves. It bit the collapsible property
+ * groups (.grp-b is display:flex, so they never retracted) and the status-bar
+ * fields (.stat likewise). Every element toggled through .hidden is a candidate,
+ * so fix it once, here, rather than per selector. */
+[hidden] { display: none !important; }
+
+body {
+  background: var(--win);
+  color: var(--text);
+  font: 12px/1.4 var(--ui);
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+body.is-resizing { cursor: inherit; user-select: none; }
+body.is-resizing * { pointer-events: none; }
+body.is-resizing .splitter { pointer-events: auto; }
+
+#app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: var(--h-menu) 1fr var(--h-status);
+}
+
+.icn { display: block; flex: none; }
+.mb-spacer { flex: 1; }
+
+/* ── menu bar ─────────────────────────────────────────────────────────── */
+
+#menubar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  background: var(--head);
+  border-bottom: 1px solid var(--line-2);
+}
+
+.mb-logo {
+  font: 600 11px/1 var(--ui);
+  letter-spacing: .14em;
+  color: var(--dim);
+  padding: 0 8px 0 2px;
+}
+
+#mb-menus { display: flex; gap: 1px; }
+
+.mb-t {
+  height: 22px;
+  padding: 0 9px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.mb-t:hover { background: rgba(255,255,255,.08); }
+.mb-t.is-on { background: var(--accent); color: #fff; }
+
+.mb-d {
+  position: fixed;
+  top: var(--h-menu);
+  z-index: 60;
+  min-width: 220px;
+  padding: 4px;
+  background: var(--head);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+}
+
+.mb-i {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  padding: 0 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mb-i:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.mb-i:disabled { color: var(--dimmer); cursor: default; }
+.mb-c { width: 12px; display: grid; place-items: center; color: var(--accent); flex: none; }
+.mb-i:hover .mb-c { color: #fff; }
+.mb-lbl { flex: 1; }
+.mb-k { color: var(--dimmer); font: 11px/1 var(--mono); }
+.mb-i:hover .mb-k { color: rgba(255,255,255,.75); }
+.mb-sep { height: 1px; margin: 4px 6px; background: var(--line); }
+
+.mb-modes { display: flex; gap: 2px; margin-left: 10px; }
+.mb-mode {
+  height: 22px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  color: var(--dim);
+  font: inherit;
+  cursor: pointer;
+}
+.mb-mode:hover:not(:disabled) { background: rgba(255,255,255,.06); color: var(--text); }
+.mb-mode.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.mb-mode:disabled { color: var(--dimmer); cursor: default; opacity: .55; }
+
+.mb-project { color: var(--dim); font: 11px/1 var(--mono); padding: 0 6px; }
+.badge {
+  font: 10px/1 var(--mono);
+  color: var(--dimmer);
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+.badge b { color: var(--dim); font-weight: 500; }
+
+.icon-btn {
+  width: 24px; height: 22px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  color: var(--dim);
+  font: inherit;
+  cursor: pointer;
+}
+.icon-btn:hover { color: var(--text); background: rgba(255,255,255,.06); }
+:focus-visible { outline: 1px solid var(--accent-h); outline-offset: 1px; }
+
+/* ── layout ───────────────────────────────────────────────────────────── */
+
+#body {
+  display: grid;
+  grid-template-columns: var(--w-tools) 1fr 4px var(--w-right);
+  min-height: 0;
+  background: var(--win);
+  gap: 1px;
+}
+body.panel-hidden #body { grid-template-columns: var(--w-tools) 1fr 0 0; }
+body.panel-hidden #right, body.panel-hidden #split-right { display: none; }
+
+#toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 3px;
+  background: var(--head);
+  overflow-y: auto;
+}
+
+.tool-b {
+  width: 100%; height: 34px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  color: var(--dim);
+  cursor: pointer;
+}
+.tool-b:hover { background: rgba(255,255,255,.07); color: var(--text); }
+.tool-b.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tool-sep { height: 1px; margin: 4px 4px; background: var(--line); flex: none; }
+
+#center { display: grid; grid-template-rows: var(--h-vp) 1fr; min-width: 0; min-height: 0; }
+
+#vp-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  background: var(--head);
+  border-bottom: 1px solid var(--line-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#vp-header::-webkit-scrollbar { display: none; }
+.vp-sep { width: 1px; height: 16px; background: var(--line); flex: none; }
+
+/* The domain has a fixed aspect and the viewport does not, so one pair of edges
+   is always letterboxed — at 256x128 in a wide window that is a third of the
+   stage. Sinking the matte below the panel greys makes that read as a mount
+   around the canvas rather than as unused space, and gives the field a definite
+   edge without drawing a border on top of the data. */
+#stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: var(--win);
+  min-width: 0; min-height: 0;
+  overflow: hidden;
+}
+#stage canvas { position: absolute; display: block; }
+#field {
+  box-shadow:
+    0 0 0 1px var(--line-2),
+    0 2px 14px rgba(0, 0, 0, .35);
+}
+:root[data-theme="light"] #field { box-shadow: 0 0 0 1px var(--line), 0 2px 12px rgba(0, 0, 0, .16); }
+#field { z-index: 0; }
+#fx { z-index: 1; touch-action: none; cursor: crosshair; }
+body.mode-edit #fx { cursor: default; }
+
+.overlay-note {
+  position: absolute; z-index: 3; left: 10px; top: 10px;
+  max-width: 320px; padding: 6px 8px;
+  background: var(--head);
+  border: 1px solid var(--warn);
+  border-radius: var(--r);
+  color: var(--dim); font-size: 11px; line-height: 1.4;
+}
+
+.toast {
+  position: absolute; z-index: 4; left: 50%; bottom: 16px;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  background: var(--head);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  color: var(--text);
+  box-shadow: 0 6px 20px rgba(0,0,0,.4);
+  max-width: 80%;
+}
+.toast[data-tone="bad"] { border-color: var(--bad); }
+.toast[data-tone="ok"] { border-color: var(--ok); }
+
+/* ── splitters ────────────────────────────────────────────────────────── */
+
+.splitter { background: var(--win); }
+.split-v { cursor: col-resize; }
+.split-h { cursor: row-resize; height: 4px; }
+.splitter:hover, .splitter.is-drag { background: var(--accent); }
+
+/* ── right column ─────────────────────────────────────────────────────── */
+
+#right {
+  display: grid;
+  grid-template-rows: var(--h-outliner) 4px 1fr;
+  min-height: 0;
+  background: var(--win);
+}
+
+#outliner-pane, #props-pane {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.pane-head {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 24px; padding: 0 8px;
+  background: var(--head);
+  border-bottom: 1px solid var(--line-2);
+  font-size: 11px; color: var(--dim);
+  letter-spacing: .06em; text-transform: uppercase;
+}
+.pane-sub { font: 10px/1 var(--mono); color: var(--dimmer); text-transform: none; letter-spacing: 0; }
+
+#outliner { overflow-y: auto; min-height: 0; }
+.otl-list { padding: 2px; }
+.otl-empty { padding: 12px 10px; color: var(--dimmer); font-size: 11px; line-height: 1.5; }
+
+.otl-row {
+  display: flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 4px;
+  border-radius: 3px;
+  cursor: default;
+}
+.otl-row:hover { background: rgba(255,255,255,.05); }
+.otl-row.is-sel { background: var(--accent); color: #fff; }
+.otl-row.is-hidden .otl-name { color: var(--dimmer); font-style: italic; }
+.otl-ico { display: grid; place-items: center; color: var(--dim); flex: none; }
+.otl-row.is-sel .otl-ico { color: #fff; }
+.otl-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.otl-role { font: 10px/1 var(--mono); color: var(--dimmer); }
+.otl-row.is-sel .otl-role { color: rgba(255,255,255,.8); }
+.otl-name-edit {
+  flex: 1; height: 18px;
+  background: var(--sunken); color: var(--text);
+  border: 1px solid var(--accent); border-radius: 3px;
+  font: inherit; padding: 0 4px;
+}
+.otl-row.is-drag { opacity: .5; }
+.otl-row.drop-above { box-shadow: inset 0 2px 0 var(--accent); }
+.otl-row.drop-below { box-shadow: inset 0 -2px 0 var(--accent); }
+.otl-tools { display: flex; gap: 1px; opacity: 0; flex: none; }
+.otl-row:hover .otl-tools, .otl-row.is-sel .otl-tools { opacity: 1; }
+.otl-b {
+  width: 20px; height: 20px;
+  display: grid; place-items: center;
+  background: transparent; border: 0; border-radius: 3px;
+  color: var(--dim); cursor: pointer;
+}
+.otl-b:hover { background: rgba(255,255,255,.14); color: var(--text); }
+.otl-row.is-sel .otl-b { color: rgba(255,255,255,.85); }
+
+/* ── properties ───────────────────────────────────────────────────────── */
+
+.prop-tabs {
+  display: flex; gap: 2px;
+  padding: 3px 4px;
+  background: var(--head);
+  border-bottom: 1px solid var(--line-2);
+}
+.pt-b {
+  width: 26px; height: 24px;
+  display: grid; place-items: center;
+  background: transparent; border: 1px solid transparent; border-radius: var(--r);
+  color: var(--dim); cursor: pointer;
+}
+.pt-b:hover { background: rgba(255,255,255,.07); color: var(--text); }
+/* The active tab was a faint background shift between nine similar glyphs.
+   The accent rule under it is the same blue that means "current selection"
+   everywhere else, so it needs no learning, and it survives at a glance. */
+.pt-b.is-on {
+  background: var(--editor);
+  border-color: var(--line);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.pt-b:not(.is-on) { color: var(--dimmer); }
+/* Group boundary in the tab strip: setup | geometry | output. Margin does the
+   spacing so the rule itself stays a hairline at any zoom. */
+.pt-sep {
+  flex: 0 0 1px; align-self: stretch;
+  margin: 3px 3px; background: var(--line-2);
+}
+
+.pt-title {
+  margin: -2px 0 7px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 10px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase;
+}
+
+.prop-body { overflow-y: auto; padding: 6px; min-height: 0; }
+.prop-body::-webkit-scrollbar, #outliner::-webkit-scrollbar, #toolbar::-webkit-scrollbar { width: 9px; }
+.prop-body::-webkit-scrollbar-thumb, #outliner::-webkit-scrollbar-thumb { background: var(--raised); border-radius: 5px; }
+
+.grp { margin-bottom: 6px; border: 1px solid var(--line-2); border-radius: var(--r); overflow: hidden; }
+.grp-h {
+  width: 100%; display: flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 7px;
+  background: var(--head); border: 0;
+  color: var(--dim); font: inherit; cursor: pointer;
+}
+.grp-h:hover { color: var(--text); }
+.grp-m { transition: transform .12s ease; }
+.grp.is-closed .grp-m { transform: rotate(-90deg); }
+.grp-b { padding: 6px; display: flex; flex-direction: column; gap: 3px; }
+
+/* number field: label left, value right, drag to scrub */
+.nf {
+  position: relative;
+  display: flex; align-items: center;
+  height: 22px; padding: 0 2px;
+  background: var(--sunken);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  cursor: ew-resize;
+  user-select: none;
+  overflow: hidden;
+}
+.nf:hover { background: var(--raised); border-color: var(--line); }
+.nf.is-drag { background: var(--accent); border-color: var(--accent); }
+.nf.is-off { opacity: .45; pointer-events: none; }
+/* Proportional fill for bounded fields. Sits behind the label and value, and
+   is quiet enough to read as a track rather than as a second selection state —
+   blue is reserved for what is actually selected. */
+/* No border on the leading edge: with one, a short fill under a left-aligned
+   label reads as a small labelled chip rather than as a partly-filled track. */
+.nf-f {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: var(--track);
+  pointer-events: none;
+}
+.nf:hover .nf-f { background: var(--raised); }
+.nf.is-drag .nf-f { background: rgba(255,255,255,.20); }
+.nf-l, .nf-v { position: relative; }
+.nf-l { flex: 1; padding-left: 6px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nf-v { padding-right: 6px; color: var(--text); font: 11px/1 var(--mono); }
+.nf.is-drag .nf-l, .nf.is-drag .nf-v { color: #fff; }
+.nf-i {
+  position: absolute; inset: 0;
+  background: var(--sunken); color: var(--text);
+  border: 1px solid var(--accent); border-radius: var(--r);
+  font: 11px/1 var(--mono); padding: 0 6px; text-align: right;
+}
+.nf-a {
+  width: 14px; height: 100%;
+  display: grid; place-items: center;
+  background: transparent; border: 0;
+  color: var(--dimmer); cursor: pointer; opacity: 0;
+}
+.nf:hover .nf-a { opacity: 1; }
+.nf-a:hover { color: var(--text); }
+.nf-dec svg { transform: rotate(180deg); }
+
+.sf { display: flex; align-items: center; gap: 6px; min-height: 22px; }
+/* Aligned with .nf-l, which is inset by the row's border + padding + its own
+   6px. Without this, dropdown labels sat 9px left of every number-field label
+   in the same group and the panel had a ragged left edge. */
+.sf-l { flex: 0 0 40%; padding-left: 9px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sf-s, .tf {
+  flex: 1; min-width: 0; height: 22px;
+  background: var(--sunken); color: var(--text);
+  border: 1px solid var(--line-2); border-radius: var(--r);
+  font: inherit; padding: 0 6px;
+  cursor: pointer;
+}
+.tf { cursor: text; }
+.sf-s:hover, .tf:hover { background: var(--raised); }
+.sf.is-off { opacity: .45; }
+
+/* padding-left matches .nf-l / .sf-l so the checkbox sits on the same left
+   rule as every other label in the group. */
+.cf { display: flex; align-items: center; gap: 7px; min-height: 22px; padding-left: 9px; color: var(--dim); cursor: pointer; }
+.cf:hover { color: var(--text); }
+.cf input {
+  appearance: none; -webkit-appearance: none;
+  width: 13px; height: 13px; flex: none;
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: 3px; cursor: pointer;
+}
+.cf input:checked { background: var(--accent); border-color: var(--accent); }
+.cf.is-off { opacity: .45; pointer-events: none; }
+
+.btn {
+  height: 24px; padding: 0 10px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--raised); color: var(--text);
+  border: 1px solid var(--line-2); border-radius: var(--r);
+  font: inherit; cursor: pointer;
+}
+.btn:hover { background: var(--raised-h); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn-danger:hover { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-h); }
+.btn-row { display: flex; gap: 4px; }
+.btn-row .btn { flex: 1; }
+
+.seg { display: flex; background: var(--sunken); border: 1px solid var(--line-2); border-radius: var(--r); padding: 1px; }
+.seg-b {
+  height: 20px; padding: 0 10px;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: transparent; border: 0; border-radius: 3px;
+  color: var(--dim); font: inherit; cursor: pointer;
+}
+.seg-b:hover:not(:disabled) { color: var(--text); }
+.seg-b.is-on { background: var(--accent); color: #fff; }
+.seg-b:disabled { opacity: .4; cursor: default; }
+
+.itg { display: flex; gap: 1px; }
+.itg-b {
+  width: 24px; height: 22px;
+  display: grid; place-items: center;
+  background: transparent; border: 1px solid transparent; border-radius: var(--r);
+  color: var(--dimmer); cursor: pointer;
+}
+.itg-b:hover { background: rgba(255,255,255,.07); color: var(--text); }
+.itg-b.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.note {
+  padding: 7px 8px;
+  background: var(--sunken);
+  border-left: 2px solid var(--accent);
+  border-radius: 3px;
+  color: var(--dim);
+  font-size: 11px; line-height: 1.55;
+}
+.kv { display: flex; justify-content: space-between; gap: 8px; min-height: 20px; align-items: center; color: var(--dim); }
+.kv b { color: var(--text); font: 11px/1 var(--mono); font-weight: 500; }
+
+.slice-prev {
+  display: block; width: 100%; height: auto;
+  background: var(--sunken);
+  border: 1px solid var(--line-2); border-radius: var(--r);
+}
+.slice-ctl { display: flex; flex-direction: column; gap: 4px; margin-top: 9px; }
+.slice-btns { flex: 1; display: flex; gap: 4px; min-width: 0; }
+.slice-btns .btn { flex: 1; }
+
+/* ── design analysis report ───────────────────────────────────────────── */
+
+.an-h {
+  margin: 14px 0 5px; padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+  color: var(--dim); font-size: 10px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.an-h:first-child { margin-top: 0; }
+.an-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; padding: 3px 0; color: var(--dim); font-size: 12px;
+}
+/* Numbers are the point of this panel, so they get the monospace column and
+   the readable colour; labels stay quiet. */
+.an-v { color: var(--text); font: 12px/1.4 var(--mono); font-weight: 500; }
+.an-v[data-tone="ok"] { color: var(--ok); }
+.an-v[data-tone="warn"] { color: var(--warn); }
+.an-row + .note, .an-h + .note { margin-top: 6px; }
+.note + .note { margin-top: 5px; }
+
+/* ── status bar ───────────────────────────────────────────────────────── */
+
+#statusbar {
+  display: flex; align-items: center; gap: 0 14px;
+  padding: 0 10px;
+  background: var(--head);
+  border-top: 1px solid var(--line-2);
+  font: 11px/1 var(--mono);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#statusbar::-webkit-scrollbar { display: none; }
+.stat { display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.stat-k { color: var(--dimmer); }
+.stat-v { color: var(--text); font-variant-numeric: tabular-nums; }
+.stat-v[data-tone="warn"] { color: var(--warn); }
+.stat-v[data-tone="bad"] { color: var(--bad); }
+.status-msg { color: var(--dim); }
+
+/* ── overlays: help and modal ─────────────────────────────────────────── */
+
+#help, #modal {
+  position: fixed; inset: 0; z-index: 80;
+  display: grid; place-items: center;
+  background: rgba(0,0,0,.55);
+}
+/* (#help / #modal used to need their own [hidden] override — the global rule
+   near the top of this file now covers them and everything else.) */
+
+.help-card, .modal-card {
+  width: min(620px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.modal-card { width: min(460px, calc(100vw - 32px)); }
+
+.help-head, .modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--head);
+  border-bottom: 1px solid var(--line-2);
+  color: var(--dim);
+  font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+}
+/* Three columns since the tools got one of their own. auto-fit rather than a
+   fixed count so the card degrades to two and then one as it narrows, without
+   needing a breakpoint per column. */
+.help-cols {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0 18px; padding: 12px;
+}
+.help-card dl { display: grid; grid-template-columns: 74px 1fr; gap: 4px 10px; align-content: start; }
+.help-card dt { color: var(--accent); font: 11px/1.5 var(--mono); }
+.help-card dd { color: var(--dim); }
+.help-foot { padding: 0 12px 12px; color: var(--dimmer); font-size: 11px; line-height: 1.55; }
+
+.modal-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.modal-foot { padding: 10px 12px; display: flex; justify-content: flex-end; gap: 6px; border-top: 1px solid var(--line-2); }
+.proj-list { max-height: 260px; overflow-y: auto; border: 1px solid var(--line-2); border-radius: var(--r); }
+.proj-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; cursor: pointer;
+  border-bottom: 1px solid var(--line-2);
+}
+.proj-row:last-child { border-bottom: 0; }
+.proj-row:hover { background: rgba(255,255,255,.05); }
+.proj-row.is-sel { background: var(--accent); color: #fff; }
+.proj-name { flex: 1; }
+.proj-meta { font: 10px/1 var(--mono); color: var(--dimmer); }
+.proj-row.is-sel .proj-meta { color: rgba(255,255,255,.8); }
+
+/* ── boot failure ─────────────────────────────────────────────────────── */
+
+#boot-error {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background: var(--win); color: var(--dim);
+}
+#boot-error > div { max-width: 500px; }
+#boot-error strong { color: var(--text); display: block; margin-bottom: 8px; font-size: 14px; }
+#boot-error p { margin-bottom: 8px; line-height: 1.6; }
+#boot-error code {
+  color: var(--accent); background: var(--sunken);
+  padding: 1px 5px; border: 1px solid var(--line); border-radius: 3px;
+  font: 11px/1 var(--mono);
+}
+
+/* ── responsive ───────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  :root { --w-tools: 38px; --h-outliner: 160px; }
+  #body { grid-template-columns: var(--w-tools) 1fr; grid-template-rows: minmax(220px, 50vh) auto; }
+  #center { grid-column: 2; grid-row: 1; }
+  #toolbar { grid-column: 1; grid-row: 1 / span 2; }
+  #split-right { display: none; }
+  #right { grid-column: 2; grid-row: 2; grid-template-rows: var(--h-outliner) 4px 320px; }
+  body.panel-hidden #body { grid-template-columns: var(--w-tools) 1fr; grid-template-rows: 1fr; }
+  .help-cols { grid-template-columns: 1fr; }
+  .mb-project, .badge { display: none; }
+  /* Touch targets need real height even in a dense instrument layout. */
+  .nf, .sf-s, .tf, .btn, .seg-b { min-height: 28px; }
+  .tool-b { height: 38px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
